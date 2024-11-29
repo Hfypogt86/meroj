@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Notes</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background: #fafafa; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: #fff; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+        }
+        h1 { 
+            text-align: center; 
+        }
+        .note { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            border-radius: 5px; 
+        }
+        .note img { 
+            max-width: 100%; 
+            height: auto; 
+            margin-top: 10px; 
+            border-radius: 5px; 
+        }
+        .note-actions { 
+            text-align: right; 
+        }
+        .btn { 
+            background: #3897f0; 
+            color: white; 
+            border: none; 
+            padding: 5px 10px; 
+            border-radius: 3px; 
+            cursor: pointer; 
+        }
+        .btn:hover { 
+            background: #2a6ebc; 
+        }
+        form { 
+            margin-bottom: 20px; 
+        }
+        input, textarea { 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>My Notes</h1>
+        <form id="noteForm">
+            <input type="text" id="title" placeholder="Note Title" required>
+            <textarea id="content" placeholder="Note Content" required></textarea>
+            <input type="file" id="imageInput" accept="image/*">
+            <button class="btn" type="button" onclick="addNote()">Add Note</button>
+        </form>
+        <div id="notesContainer"></div>
+    </div>
+
+    <script>
+        // تحميل الملاحظات من JSON
+        async function loadNotes() {
+            const response = await fetch('/messages.json');
+            const notes = await response.json();
+            const notesContainer = document.getElementById('notesContainer');
+            notesContainer.innerHTML = ''; // تنظيف القائمة الحالية
+            
+            notes.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.classList.add('note');
+
+                const noteTitle = document.createElement('h3');
+                noteTitle.textContent = note.title;
+                noteElement.appendChild(noteTitle);
+
+                const noteContent = document.createElement('p');
+                noteContent.textContent = note.content;
+                noteElement.appendChild(noteContent);
+
+                if (note.image) {
+                    const noteImage = document.createElement('img');
+                    noteImage.src = note.image;
+                    noteElement.appendChild(noteImage);
+                }
+
+                notesContainer.appendChild(noteElement);
+            });
+        }
+
+        // إضافة ملاحظة جديدة
+        function addNote() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const imageInput = document.getElementById('imageInput');
+            const imageFile = imageInput.files[0];
+            
+            if (!title || !content) {
+                alert("Please provide both title and content.");
+                return;
+            }
+
+            let image = null;
+            if (imageFile) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    image = event.target.result;
+                    saveNote(title, content, image);
+                };
+                reader.readAsDataURL(imageFile);
+            } else {
+                saveNote(title, content, null);
+            }
+        }
+
+        // حفظ الملاحظة في الخادم
+        async function saveNote(title, content, image) {
+            const notes = await fetch('/messages.json').then(res => res.json());
+
+            const newNote = { title, content, image };
+            notes.push(newNote);
+
+            await fetch('/save-notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(notes)
+            });
+
+            loadNotes(); // إعادة تحميل الملاحظات
+        }
+
+        // تحميل الملاحظات عند فتح الصفحة
+        loadNotes();
+    </script>
+</body>
+</html>
